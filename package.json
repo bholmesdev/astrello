@@ -17,6 +17,7 @@
     "@astrojs/tailwind": "^5.1.0",
     "@github/catalyst": "^1.6.0",
     "astro": "^4.5.1",
+    "astro-icon": "^1.1.0",
     "github-slugger": "^2.0.0",
     "htmx.org": "^1.9.10",
     "simple-stack-form": "^0.1.12",
