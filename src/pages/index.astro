@@ -1,75 +1,75 @@
 ---
+import { db } from "astro:db";
 import Layout from "../layouts/Layout.astro";
-import Card from "../components/Card.astro";
+import { Board } from "astro:db";
+import { z } from "zod";
+import Slugger from "github-slugger";
+
+const form = await Astro.locals.form.getData({
+  validator: { name: z.string() },
+});
+if (form?.fieldErrors) Astro.response.status = 400;
+
+if (form?.data) {
+  const slugs = await db
+    .select({
+      slug: Board.slug,
+      // TODO: where user is something
+    })
+    .from(Board);
+
+  const slugger = new Slugger();
+  for (const { slug } of slugs) {
+    slugger.occurrences[slug] ??= 0;
+    slugger.occurrences[slug]++;
+  }
+
+  const { name } = form.data;
+  const slug = slugger.slug(name);
+  await db.insert(Board).values({
+    name,
+    slug,
+  });
+}
+const boards = await db.select().from(Board);
 ---
 
-<Layout title="Welcome to Astro.">
-  <div class="grid grid-cols-5 gap-3">
-    <my-draggable
-      draggable="true"
-      class="border border-gray-300 rounded bg-gray-900 p-3 cursor-move data-[dragging]:opacity-30 data-[over]:bg-red-200 transition-all"
-    >
-      A
-    </my-draggable>
-    <my-draggable
-      draggable="true"
-      class="border border-gray-300 rounded bg-gray-900 p-3 cursor-move data-[dragging]:opacity-30 data-[over]:bg-red-200 transition-all"
-    >
-      B
-    </my-draggable>
-    <my-draggable
-      draggable="true"
-      class="border border-gray-300 rounded bg-gray-900 p-3 cursor-move data-[dragging]:opacity-30 data-[over]:bg-red-200 transition-all"
-    >
-      C
-    </my-draggable>
-  </div>
+<Layout title="Astrello | Boards">
+  <h1>Boards</h1>
+  <ul data-board-list>
+    {
+      boards.map((b) => (
+        <li>
+          <a href={b.slug}>{b.name}</a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <form method="POST">
+    <input class="dark:bg-slate-800 rounded" type="text" name="name" />
+    <button type="submit">Create</button>
+  </form>
 </Layout>
 
 <script>
-  import { controller, targets, target, attr } from "@github/catalyst";
+  // Sorry primeagen chat is here so we can't have fun
+  // import { controller,target } from '@github/catalyst'
 
-  @controller
-  class MyDraggableElement extends HTMLElement {
-    @attr dragging = false;
-    @attr over = false;
+  // @controller
+  // class MyFormElement extends HTMLElement {
+  //   @target form: HTMLFormElement;
 
-    static draggingElement?: HTMLElement;
-
-    connectedCallback() {
-      this.addEventListener("dragstart", (e) => {
-        this.dragging = true;
-
-        if (!e.dataTransfer) return;
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/html", this.innerHTML);
-
-        MyDraggableElement.draggingElement = this;
-      });
-      this.addEventListener("dragend", (e) => {
-        this.dragging = false;
-      });
-      this.addEventListener("dragenter", (e) => {
-        this.over = true;
-      });
-      this.addEventListener("dragleave", (e) => {
-        this.over = false;
-      });
-      this.addEventListener("dragover", (e) => {
-        e.preventDefault();
-      });
-      this.addEventListener("drop", (e) => {
-        e.stopPropagation();
-
-        if (!e.dataTransfer) return;
-        const data = e.dataTransfer.getData("text/html");
-        if (MyDraggableElement.draggingElement) {
-          MyDraggableElement.draggingElement.innerHTML = this.innerHTML;
-        }
-
-        this.innerHTML = data;
-        this.over = false;
-      });
-    }
-  }
+  //   connectedCallback() {
+  //     this.form.addEventListener('submit', async (e) => {
+  //       e.preventDefault();
+  //       const html = await fetch('/api/board', {
+  //         method: 'POST',
+  //         body: new FormData(this.form)
+  //       }).then((res) => res.text());
+  //       this.form.reset();
+  //       document.querySelector('[data-board-list]')?.insertAdjacentHTML('afterend', html);
+  //     });
+  //   }
+  // }
 </script>
