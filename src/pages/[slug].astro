@@ -3,6 +3,7 @@ import { db, Board, Card } from "astro:db";
 import Layout from "../layouts/Layout.astro";
 import { eq } from "astro:db";
 import { COLUMN } from "../../db/config";
+import { Icon } from "astro-icon/components";
 
 const boardSlug = Astro.params.slug;
 
@@ -41,8 +42,14 @@ const column = {
   <main class="grid grid-cols-3 gap-4 p-4">
     {
       Object.entries(column).map(([key, cards]) => (
-        <div>
+        <my-column class="flex flex-col gap-4">
           <h2 class="text-xl font-bold">{key}</h2>
+          <button
+            data-action="click:my-column#addCard"
+            class="dark:bg-slate-900 px-4 py-2 flex justify-center rounded"
+          >
+            <Icon name="add" />
+          </button>
           {cards.map((c) => (
             <my-draggable
               class="p-2 rounded dark:bg-slate-900 shadow-md flex flex-col gap-2"
@@ -69,7 +76,7 @@ const column = {
               </form>
             </my-draggable>
           ))}
-        </div>
+        </my-column>
       ))
     }
   </main>
@@ -77,6 +84,13 @@ const column = {
 
 <script>
   import { controller, targets, target, attr } from "@github/catalyst";
+
+  @controller
+  class MyColumn extends HTMLElement {
+    addCard() {
+      console.log("add card");
+    }
+  }
 
   @controller
   class MyDraggableElement extends HTMLElement {
