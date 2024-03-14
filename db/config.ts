@@ -6,6 +6,9 @@ const Board = defineTable({
     slug: column.text(),
     name: column.text(),
   },
+  indexes: {
+    board_slug: { on: "slug" },
+  },
 });
 
 export const COLUMN = {
