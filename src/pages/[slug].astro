@@ -1,0 +1,146 @@
+---
+import { db, Board, Card } from "astro:db";
+import Layout from "../layouts/Layout.astro";
+import { eq } from "astro:db";
+import { COLUMN } from "../../db/config";
+
+const boardSlug = Astro.params.slug;
+
+if (!boardSlug) {
+  return new Response("Invalid board ID", { status: 400 });
+}
+
+const board = await db
+  .select({ id: Board.id, name: Board.name })
+  .from(Board)
+  .where(eq(Board.slug, boardSlug))
+  .get();
+
+if (!board) {
+  return new Response("Board not found", { status: 404 });
+}
+
+const allCards = await db
+  .select({
+    id: Card.id,
+    name: Card.name,
+    description: Card.description,
+    column: Card.column,
+  })
+  .from(Card)
+  .where(eq(Card.boardId, board.id));
+
+const column = {
+  Todo: allCards.filter((c) => c.column === COLUMN.TODO),
+  "In Progress": allCards.filter((c) => c.column === COLUMN.IN_PROGRESS),
+  Done: allCards.filter((c) => c.column === COLUMN.DONE),
+};
+---
+
+<Layout title={`${boardSlug} | Astrello`}>
+  <main class="grid grid-cols-3 gap-4 p-4">
+    {
+      Object.entries(column).map(([key, cards]) => (
+        <div>
+          <h2 class="text-xl font-bold">{key}</h2>
+          {cards.map((c) => (
+            <my-draggable
+              class="p-2 rounded dark:bg-slate-900 shadow-md flex flex-col gap-2"
+              draggable="true"
+            >
+              <form
+                data-action="submit:my-draggable#handleSubmit focusout:my-draggable#handleSubmit"
+                data-target="my-draggable.form"
+                action={`/api/board/${board.id}/card/${c.id}`}
+              >
+                <input
+                  type="text"
+                  name="name"
+                  value={c.name}
+                  class="font-bold dark:bg-transparent text-lg"
+                />
+                <input
+                  type="text"
+                  name="description"
+                  value={c.description}
+                  class="dark:bg-transparent"
+                />
+                <button hidden />
+              </form>
+            </my-draggable>
+          ))}
+        </div>
+      ))
+    }
+  </main>
+</Layout>
+
+<script>
+  import { controller, targets, target, attr } from "@github/catalyst";
+
+  @controller
+  class MyDraggableElement extends HTMLElement {
+    @attr dragging = false;
+    @attr over = false;
+    @target form!: HTMLFormElement;
+
+    static draggingElement?: HTMLElement;
+
+    async handleSubmit(e: Event) {
+      if (
+        e instanceof FocusEvent &&
+        (e.relatedTarget === null ||
+          (e.relatedTarget instanceof Node &&
+            this.form.contains(e.relatedTarget)))
+      ) {
+        return;
+      }
+      e.preventDefault();
+
+      const { ok } = await fetch(this.form.action, {
+        method: "POST",
+        body: new FormData(this.form),
+      });
+      if (!ok) {
+        // TODO: toast
+        console.error("Failed to update card");
+      }
+    }
+
+    connectedCallback() {
+      this.addEventListener("dragstart", (e) => {
+        this.dragging = true;
+
+        if (!e.dataTransfer) return;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/html", this.innerHTML);
+
+        MyDraggableElement.draggingElement = this;
+      });
+      this.addEventListener("dragend", (e) => {
+        this.dragging = false;
+      });
+      this.addEventListener("dragenter", (e) => {
+        this.over = true;
+      });
+      this.addEventListener("dragleave", (e) => {
+        this.over = false;
+      });
+      this.addEventListener("dragover", (e) => {
+        e.preventDefault();
+      });
+      this.addEventListener("drop", (e) => {
+        e.stopPropagation();
+
+        if (!e.dataTransfer) return;
+        const data = e.dataTransfer.getData("text/html");
+        if (MyDraggableElement.draggingElement) {
+          MyDraggableElement.draggingElement.innerHTML = this.innerHTML;
+        }
+
+        this.innerHTML = data;
+        this.over = false;
+      });
+    }
+  }
+</script>
