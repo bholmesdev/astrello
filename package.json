@@ -12,6 +12,7 @@
   "dependencies": {
     "@astrojs/check": "^0.5.7",
     "@astrojs/cloudflare": "^9.1.0",
+    "@astrojs/db": "^0.8.3",
     "@astrojs/tailwind": "^5.1.0",
     "@github/catalyst": "^1.6.0",
     "astro": "^4.5.1",
