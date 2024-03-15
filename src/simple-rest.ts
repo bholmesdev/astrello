@@ -14,46 +14,74 @@ const MimeType = [
 
 type MimeType = (typeof MimeType)[number];
 
-export async function parseFetch<
-  TAccept extends MimeType | undefined = undefined
->(
+export async function fetchJson(
   url: string | URL,
   init: RequestInit & {
     headers?: {
       "Content-Type"?: MimeType;
-      Accept?: TAccept;
+      Accept?: "application/json";
       [key: string]: string | undefined;
     };
     method?: Method;
   }
-): Promise<
-  Omit<Response, "body"> & {
-    body: TAccept extends "text/html"
-      ? DocumentFragment
-      : TAccept extends "application/json"
-      ? any
-      : string;
+) {
+  const res = await fetch(url, {
+    ...init,
+    headers: { Accept: "application/json", ...init?.headers },
+  });
+  return { ...res, body: await res.json() };
+}
+
+export async function fetchHtml(
+  url: string | URL,
+  init?: RequestInit & {
+    headers?: {
+      "Content-Type"?: MimeType;
+      Accept?: "text/html";
+      [key: string]: string | undefined;
+    };
+    method?: Method;
   }
-> {
-  const { Accept } = init.headers || {};
-  const response = await fetch(url, init);
-  if (Accept === "application/json") {
-    Object.assign(response, { body: await response.json() });
-    return response as any;
+) {
+  const res = await fetch(url, {
+    ...init,
+    headers: { Accept: "text/html", ...init?.headers },
+  });
+  const domParser = new DOMParser();
+  const { body } = domParser.parseFromString(await res.text(), "text/html");
+  const template = document.createElement("template");
+  template.innerHTML = body.innerHTML;
+  return { ...res, body: template.content };
+}
+
+export async function fetchHtmlDocument(
+  url: string | URL,
+  init?: RequestInit & {
+    headers?: {
+      "Content-Type"?: MimeType;
+      Accept?: "text/html";
+      [key: string]: string | undefined;
+    };
+    method?: Method;
   }
-  if (Accept === "text/html") {
-    const domParser = new DOMParser();
-    // Use dom parser to sanitize scripts
-    const { body } = domParser.parseFromString(
-      await response.text(),
-      "text/html"
-    );
-    // Use template to wrap inner html as document fragment
-    const template = document.createElement("template");
-    template.innerHTML = body.innerHTML;
-    Object.assign(response, { body: template.content });
-    return response as any;
+) {
+  const res = await fetch(url, init);
+  const domParser = new DOMParser();
+  const doc = domParser.parseFromString(await res.text(), "text/html");
+  return { ...res, body: doc };
+}
+
+export async function fetchText(
+  url: string | URL,
+  init?: RequestInit & {
+    headers?: {
+      "Content-Type"?: MimeType;
+      Accept?: MimeType;
+      [key: string]: string | undefined;
+    };
+    method?: Method;
   }
-  Object.assign(response, { body: await response.text() });
-  return response as any;
+) {
+  const res = await fetch(url, init);
+  return { ...res, body: await res.text() };
 }

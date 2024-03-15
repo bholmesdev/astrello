@@ -54,7 +54,7 @@ const boards = await db.select().from(Board);
 
 <script>
   import { controller, target } from "@github/catalyst";
-  import { parseFetch } from "../simple-rest";
+  import { fetchHtml } from "../simple-rest";
 
   @controller
   class MyFormElement extends HTMLElement {
@@ -63,15 +63,12 @@ const boards = await db.select().from(Board);
     connectedCallback() {
       this.form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const { body } = await parseFetch("/api/board", {
+        const { body } = await fetchHtml("/api/board", {
           method: "POST",
           body: new FormData(this.form),
-          headers: {
-            Accept: "text/html",
-          },
         });
         this.form.reset();
-        document.querySelector("[data-board-list]")?.append(body);
+        document.querySelector("[data-board-list]")!.replaceChildren(body);
       });
     }
   }
