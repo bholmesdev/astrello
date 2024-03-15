@@ -39,7 +39,7 @@ export async function parseFetch<
 ): Promise<
   Omit<Response, "body"> & {
     body: TAccept extends DOMMimeType
-      ? Document
+      ? DocumentFragment
       : TAccept extends "application/json"
       ? any
       : string;
@@ -53,9 +53,10 @@ export async function parseFetch<
   }
   if (Accept && isDomMimeType(Accept)) {
     const domParser = new DOMParser();
-    Object.assign(response, {
-      body: domParser.parseFromString(await response.text(), Accept),
-    });
+    const { body } = domParser.parseFromString(await response.text(), Accept);
+    const template = document.createElement("template");
+    template.appendChild(body);
+    Object.assign(response, { body: template.content });
     return response as any;
   }
   Object.assign(response, { body: await response.text() });

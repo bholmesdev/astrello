@@ -53,23 +53,26 @@ const boards = await db.select().from(Board);
 </Layout>
 
 <script>
-  // Sorry primeagen chat is here so we can't have fun
-  // import { controller,target } from '@github/catalyst'
+  import { controller, target } from "@github/catalyst";
+  import { parseFetch } from "../simple-rest";
 
-  // @controller
-  // class MyFormElement extends HTMLElement {
-  //   @target form: HTMLFormElement;
+  @controller
+  class MyFormElement extends HTMLElement {
+    @target form!: HTMLFormElement;
 
-  //   connectedCallback() {
-  //     this.form.addEventListener('submit', async (e) => {
-  //       e.preventDefault();
-  //       const html = await fetch('/api/board', {
-  //         method: 'POST',
-  //         body: new FormData(this.form)
-  //       }).then((res) => res.text());
-  //       this.form.reset();
-  //       document.querySelector('[data-board-list]')?.insertAdjacentHTML('afterend', html);
-  //     });
-  //   }
-  // }
+    connectedCallback() {
+      this.form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const { body } = await parseFetch("/api/board", {
+          method: "POST",
+          body: new FormData(this.form),
+          headers: {
+            Accept: "text/html",
+          },
+        });
+        this.form.reset();
+        document.querySelector("[data-board-list]")?.append(body);
+      });
+    }
+  }
 </script>
