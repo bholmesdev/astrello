@@ -1,14 +1,15 @@
-import type { APIRoute } from "astro";
 import { db, Card, eq, and } from "astro:db";
 import { createForm } from "simple:form";
 import { z } from "zod";
+import { JsonResponse } from "../../../../../simple-rest";
+import type { APIContext } from "astro";
 
 const cardPatch = createForm({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
 });
 
-export const POST: APIRoute = async (ctx) => {
+export const POST = async (ctx: APIContext) => {
   const params = z
     .object({
       board: z.coerce.number(),
@@ -17,22 +18,16 @@ export const POST: APIRoute = async (ctx) => {
     .safeParse(ctx.params);
 
   if (!params.success) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: "Invalid board or card ID",
-      }),
+    return new JsonResponse(
+      { success: false, error: "Invalid board or card ID" } as const,
       { status: 400 }
     );
   }
 
   const form = await ctx.locals.form.getData(cardPatch);
   if (!form || form.fieldErrors) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: form?.fieldErrors ?? "Missing form data",
-      }),
+    return new JsonResponse(
+      { success: false, error: "Invalid form data" } as const,
       { status: 400 }
     );
   }
@@ -47,13 +42,15 @@ export const POST: APIRoute = async (ctx) => {
       and(eq(Card.boardId, params.data.board), eq(Card.id, params.data.card))
     );
   if (res.rowsAffected === 0) {
-    return new Response(
-      JSON.stringify({
+    return new JsonResponse(
+      {
         success: false,
-        message: "Card not found",
-      }),
-      { status: 404 }
+        error: "Card not found",
+      } as const,
+      {
+        status: 404,
+      }
     );
   }
-  return new Response(null, { status: 204 });
+  return new JsonResponse({ success: true } as const);
 };

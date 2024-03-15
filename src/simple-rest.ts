@@ -1,3 +1,6 @@
+import type { APIContext } from "astro";
+import type { POST } from "./pages/api/board/[board]/card/[card]";
+
 type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 
 const MimeType = [
@@ -14,9 +17,18 @@ const MimeType = [
 
 type MimeType = (typeof MimeType)[number];
 
-export async function fetchJson(
-  url: string | URL,
-  init: RequestInit & {
+type Routes = {
+  // TODO: codegen these
+  [path: `/api/board/${number}/card/${number}`]: InferJsonResponse<typeof POST>;
+};
+
+export function route(path: keyof Routes) {
+  return path;
+}
+
+export async function fetchJson<T extends string | URL>(
+  url: T,
+  init?: RequestInit & {
     headers?: {
       "Content-Type"?: MimeType;
       Accept?: "application/json";
@@ -29,7 +41,8 @@ export async function fetchJson(
     ...init,
     headers: { Accept: "application/json", ...init?.headers },
   });
-  return { ...res, body: await res.json() };
+  const json: T extends keyof Routes ? Routes[T] : any = await res.json();
+  return { ...res, body: json };
 }
 
 export async function fetchHtml(
@@ -85,3 +98,19 @@ export async function fetchText(
   const res = await fetch(url, init);
   return { ...res, body: await res.text() };
 }
+
+export class JsonResponse<T> extends Response {
+  jsonBody: T;
+
+  constructor(body: T, init?: ResponseInit) {
+    super(JSON.stringify(body), {
+      headers: { "Content-Type": "application/json", ...init?.headers },
+      ...init,
+    });
+    this.jsonBody = body;
+  }
+}
+
+export type InferJsonResponse<
+  T extends (ctx: APIContext) => Promise<JsonResponse<any>>
+> = T extends (ctx: APIContext) => Promise<JsonResponse<infer U>> ? U : never;

@@ -53,12 +53,13 @@ const column = {
           {cards.map((c) => (
             <my-draggable
               class="p-2 rounded dark:bg-slate-900 shadow-md flex flex-col gap-2"
+              data-board={board.id}
+              data-card={c.id}
               draggable="true"
             >
               <form
                 data-action="submit:my-draggable#handleSubmit focusout:my-draggable#handleSubmit"
                 data-target="my-draggable.form"
-                action={`/api/board/${board.id}/card/${c.id}`}
               >
                 <input
                   type="text"
@@ -83,7 +84,8 @@ const column = {
 </Layout>
 
 <script>
-  import { controller, targets, target, attr } from "@github/catalyst";
+  import { controller, target, attr } from "@github/catalyst";
+  import { fetchJson } from "../simple-rest";
 
   @controller
   class MyColumn extends HTMLElement {
@@ -96,6 +98,8 @@ const column = {
   class MyDraggableElement extends HTMLElement {
     @attr dragging = false;
     @attr over = false;
+    @attr board = 0;
+    @attr card = 0;
     @target form!: HTMLFormElement;
 
     static draggingElement?: HTMLElement;
@@ -111,13 +115,16 @@ const column = {
       }
       e.preventDefault();
 
-      const { ok } = await fetch(this.form.action, {
-        method: "POST",
-        body: new FormData(this.form),
-      });
-      if (!ok) {
+      const { body } = await fetchJson(
+        `/api/board/${this.board}/card/${this.card}`,
+        {
+          method: "POST",
+          body: new FormData(this.form),
+        }
+      );
+      if (!body.success) {
         // TODO: toast
-        console.error("Failed to update card");
+        console.error("Failed to update card", body.error);
       }
     }
 
